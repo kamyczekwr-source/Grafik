@@ -10,6 +10,17 @@ Aplikacja do układania grafiku pracy recepcji (3-miesięczny okres rozliczeniow
 - Licznik godzin na osobę + bilans względem normy w całym 3-miesięcznym okresie rozliczeniowym
 - Podwójna obsada zmiany — przycisk "x2" przy komórce, elastycznie per dzień i zmiana
 - Dwa tryby: **Ręczny** (klikasz i wybierasz zmianę) oraz **Auto** (algorytm proponuje cały miesiąc, wyrównując godziny; wynik można poprawić ręcznie)
+- **Generowanie przez AI (Gemini)** — opisujesz słownie, jak ma wyglądać grafik (np. czyjeś preferencje, dni wolne), a Gemini generuje cały miesiąc respektując reguły
+- **Cofnij / Wyczyść grafik** — cofa ostatnią zmianę (do 20 kroków wstecz) albo czyści cały bieżący miesiąc
+- **Widok pracownika** — zakładka "Pracownicy" pokazuje listę, klik w osobę pokazuje jej indywidualny grafik na dany miesiąc
+
+## Klucz Gemini API (opcjonalnie, do generowania AI)
+
+1. Wejdź na [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) i wygeneruj darmowy klucz API
+2. Lokalnie: skopiuj `.env.example` do `.env` i wklej klucz jako `VITE_GEMINI_API_KEY=...`
+3. Na Vercel: Project Settings → Environment Variables → dodaj `VITE_GEMINI_API_KEY` z tą samą wartością, potem zrób redeploy (Deployments → ... → Redeploy)
+
+Bez tego klucza reszta aplikacji działa normalnie — przycisk "Generuj z AI" po prostu pokaże komunikat o braku klucza.
 
 ## Uruchomienie lokalnie
 
