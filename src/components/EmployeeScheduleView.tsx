@@ -17,31 +17,52 @@ export function EmployeeScheduleView({ employee, schedule, onBack }: Props) {
 
   return (
     <div>
-      <button onClick={onBack} style={{ marginBottom: 12 }}>
+      <button onClick={onBack} style={{ marginBottom: 14, fontSize: 12 }}>
         ← Wróć do listy pracowników
       </button>
-      <h2 style={{ fontSize: 18, fontWeight: 500 }}>
-        {employee.name} — {schedule.month}/{schedule.year}
+      <h2 style={{ fontSize: 19, fontWeight: 600 }}>
+        {employee.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>— {schedule.month}/{schedule.year}</span>
       </h2>
-      <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>
-        Suma: {worked}h / {norm}h ({employee.etat === 1 ? 'pełny etat' : `${employee.etat} etatu`})
+      <div
+        style={{
+          fontSize: 13,
+          color: 'var(--text-muted)',
+          marginTop: 4,
+          marginBottom: 14,
+        }}
+      >
+        Suma: <strong style={{ color: worked > norm ? 'var(--danger-text)' : 'var(--text)' }}>{worked}h</strong> / {norm}h ·{' '}
+        {employee.etat === 1 ? 'pełny etat' : `${employee.etat} etatu`}
       </div>
-      <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', maxWidth: 320 }}>
-        <tbody>
-          {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
-            const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const free = isFreeDay(dateStr, holidays);
-            const entry = schedule.entries.find((e) => e.date === dateStr && e.employeeId === employee.id);
-            return (
-              <tr key={d} style={{ borderTop: '1px solid #eee', background: free ? '#fdf3d0' : 'transparent' }}>
-                <td style={{ padding: '4px 8px', width: 30, color: '#888' }}>{d}</td>
-                <td style={{ padding: '4px 8px' }}>{entry?.code ?? (free ? '' : 'W')}</td>
-                <td style={{ padding: '4px 8px', textAlign: 'right', color: '#888' }}>{entry ? '8h' : ''}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow)',
+          background: 'var(--surface)',
+          overflow: 'hidden',
+          maxWidth: 340,
+        }}
+      >
+        <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+          <tbody>
+            {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
+              const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              const free = isFreeDay(dateStr, holidays);
+              const entry = schedule.entries.find((e) => e.date === dateStr && e.employeeId === employee.id);
+              return (
+                <tr key={d} style={{ borderTop: '1px solid var(--border)', background: free ? 'var(--warning-bg)' : 'transparent' }}>
+                  <td style={{ padding: '6px 12px', width: 32, color: 'var(--text-muted)' }}>{d}</td>
+                  <td style={{ padding: '6px 12px', fontWeight: entry ? 600 : 400, color: entry ? 'var(--text)' : 'var(--text-faint)' }}>
+                    {entry?.code ?? (free ? '—' : 'W')}
+                  </td>
+                  <td style={{ padding: '6px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>{entry ? '8h' : ''}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

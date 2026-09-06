@@ -25,26 +25,47 @@ export function LoginScreen() {
   }
 
   return (
-    <div style={{ maxWidth: 320, margin: '80px auto', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: 18, fontWeight: 500, marginBottom: 16 }}>Grafik recepcji — logowanie</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input
-          type="email"
-          placeholder="name@company.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Hasło"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <div style={{ color: '#a32d2d', fontSize: 13 }}>{error}</div>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Logowanie...' : 'Zaloguj'}
-        </button>
-      </form>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 340,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow)',
+          padding: '28px 26px',
+        }}
+      >
+        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Grafik recepcji</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0, marginBottom: 20 }}>Zaloguj się, aby kontynuować</p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            type="email"
+            placeholder="name@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Hasło"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error && <div style={{ color: 'var(--danger-text)', fontSize: 13 }}>{error}</div>}
+          <button className="primary" type="submit" disabled={submitting} style={{ marginTop: 4 }}>
+            {submitting ? 'Logowanie...' : 'Zaloguj'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

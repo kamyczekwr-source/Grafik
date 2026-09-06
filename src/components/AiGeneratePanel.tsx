@@ -36,23 +36,33 @@ export function AiGeneratePanel({ employees, schedule, onGenerated }: Props) {
   }
 
   return (
-    <div style={{ background: '#f4f3ee', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Generowanie grafiku przez AI (Gemini)</div>
+    <div
+      style={{
+        background: 'var(--accent-soft)',
+        border: '1px solid var(--border-strong)',
+        borderRadius: 'var(--radius)',
+        padding: 14,
+        marginBottom: 18,
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--accent-strong)' }}>
+        ✨ Generowanie grafiku przez AI (Gemini)
+      </div>
       <textarea
         value={instructions}
         onChange={(e) => setInstructions(e.target.value)}
         placeholder='Np. "Fokt chce mieć wolne w drugi weekend miesiąca. Markiewicz woli zmiany poranne."'
         rows={3}
-        style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 13, padding: 6 }}
+        style={{ width: '100%', boxSizing: 'border-box' }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-        <button onClick={handleGenerate} disabled={loading}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+        <button className="primary" onClick={handleGenerate} disabled={loading}>
           {loading ? 'Generuję...' : 'Generuj z AI'}
         </button>
-        <span style={{ fontSize: 12, color: '#888' }}>Zastąpi bieżący grafik tego miesiąca (możesz cofnąć).</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Zastąpi bieżący grafik tego miesiąca (możesz cofnąć).</span>
       </div>
-      {error && <div style={{ color: '#a32d2d', fontSize: 12, marginTop: 6 }}>{error}</div>}
-      {note && <div style={{ color: '#185fa5', fontSize: 12, marginTop: 6 }}>Uwaga od AI: {note}</div>}
+      {error && <div style={{ color: 'var(--danger-text)', fontSize: 12, marginTop: 8 }}>{error}</div>}
+      {note && <div style={{ color: 'var(--info-text)', fontSize: 12, marginTop: 8 }}>Uwaga od AI: {note}</div>}
     </div>
   );
 }

@@ -46,14 +46,33 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
 
   return (
     <div>
-      <div style={{ overflowX: 'auto', border: '1px solid var(--border, #ddd)', borderRadius: 8 }}>
+      <div
+        style={{
+          overflowX: 'auto',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow)',
+          background: 'var(--surface)',
+        }}
+      >
         <table style={{ borderCollapse: 'collapse', fontSize: 12, minWidth: employees.length * 130, width: '100%' }}>
           <thead>
-            <tr style={{ background: '#f4f3ee' }}>
+            <tr style={{ background: 'var(--surface-muted)' }}>
               {employees.map((emp) => (
-                <th key={emp.id} colSpan={3} style={{ padding: '6px 4px', fontWeight: 500, borderLeft: '1px solid #ddd' }}>
+                <th
+                  key={emp.id}
+                  colSpan={3}
+                  style={{
+                    padding: '9px 6px',
+                    fontWeight: 600,
+                    fontSize: 12.5,
+                    borderLeft: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    letterSpacing: 0.2,
+                  }}
+                >
                   {emp.name}
-                  {emp.etat !== 1 && <span style={{ color: '#888', fontWeight: 400 }}> {emp.etat}</span>}
+                  {emp.etat !== 1 && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> {emp.etat}</span>}
                 </th>
               ))}
             </tr>
@@ -63,7 +82,7 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
               const dateStr = `${schedule.year}-${String(schedule.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
               const free = isFreeDay(dateStr, holidays);
               return (
-                <tr key={d} style={{ borderTop: '1px solid #eee', background: free ? '#fdf3d0' : 'transparent' }}>
+                <tr key={d} style={{ borderTop: '1px solid var(--border)', background: free ? 'var(--warning-bg)' : 'transparent' }}>
                   {employees.map((emp) => {
                     const entry = entryFor(dateStr, emp.id, 0);
                     const issue = entry ? issueKey(dateStr, emp.id) : undefined;
@@ -72,7 +91,13 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                       <Fragment key={emp.id}>
                         <td
                           key={emp.id + '-n'}
-                          style={{ padding: '4px 3px', fontWeight: 500, color: '#888', borderLeft: '1px solid #eee', width: 16 }}
+                          style={{
+                            padding: '5px 3px',
+                            fontWeight: 500,
+                            color: 'var(--text-muted)',
+                            borderLeft: '1px solid var(--border)',
+                            width: 16,
+                          }}
                         >
                           {d}
                         </td>
@@ -80,12 +105,14 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                           key={emp.id + '-s'}
                           onClick={() => !readOnly && setEditing({ date: dateStr, employeeId: emp.id, slot: 0 })}
                           style={{
-                            padding: '4px 3px',
+                            padding: '5px 3px',
                             textAlign: 'center',
                             cursor: readOnly ? 'default' : 'pointer',
-                            minWidth: 44,
-                            background: issue ? '#fbdcdc' : undefined,
-                            borderRadius: issue ? 4 : undefined,
+                            minWidth: 46,
+                            fontWeight: 500,
+                            color: 'var(--text)',
+                            background: issue ? 'var(--danger-bg)' : undefined,
+                            borderRadius: issue ? 'var(--radius-sm)' : undefined,
                           }}
                           title={issue?.message}
                         >
@@ -95,6 +122,7 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                               defaultValue={entry?.code ?? 'W'}
                               onBlur={() => setEditing(null)}
                               onChange={(e) => setShift(dateStr, emp.id, 0, e.target.value as ShiftCode)}
+                              style={{ fontSize: 11, padding: '2px 4px' }}
                             >
                               {SHIFT_OPTIONS.map((opt) => (
                                 <option key={opt} value={opt}>
@@ -104,7 +132,7 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                             </select>
                           ) : (
                             <>
-                              {entry?.code ?? ''}
+                              {entry?.code ?? <span style={{ color: 'var(--text-faint)' }}>·</span>}
                               {entry && entry.code !== 'W' && (
                                 <button
                                   onClick={(ev) => {
@@ -115,10 +143,11 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                                   style={{
                                     marginLeft: 3,
                                     fontSize: 9,
-                                    padding: '0 3px',
+                                    fontWeight: 600,
+                                    padding: '1px 4px',
                                     border: 'none',
-                                    background: isDoubleStaffed(dateStr, entry.code) ? '#0f6e56' : 'transparent',
-                                    color: isDoubleStaffed(dateStr, entry.code) ? '#fff' : '#bbb',
+                                    background: isDoubleStaffed(dateStr, entry.code) ? 'var(--accent)' : 'var(--surface-muted)',
+                                    color: isDoubleStaffed(dateStr, entry.code) ? '#fff' : 'var(--text-faint)',
                                     borderRadius: 3,
                                     cursor: 'pointer',
                                   }}
@@ -129,7 +158,10 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
                             </>
                           )}
                         </td>
-                        <td key={emp.id + '-h'} style={{ padding: '4px 3px', textAlign: 'center', color: '#888', width: 14 }}>
+                        <td
+                          key={emp.id + '-h'}
+                          style={{ padding: '5px 3px', textAlign: 'center', color: 'var(--text-faint)', width: 14 }}
+                        >
                           {entry ? 8 : ''}
                         </td>
                       </Fragment>
@@ -142,16 +174,25 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
         </table>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${employees.length}, 1fr)`, gap: 8, marginTop: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(110px, 1fr))`, gap: 8, marginTop: 14 }}>
         {employees.map((emp) => {
           const worked = workedHoursForEmployee(schedule.entries, emp.id);
           const norm = monthlyNormHours(schedule.year, schedule.month, emp.etat);
           const over = worked > norm;
           return (
-            <div key={emp.id} style={{ background: '#f4f3ee', borderRadius: 8, padding: '8px 10px' }}>
-              <div style={{ fontSize: 11, color: '#888' }}>{emp.name}</div>
-              <div style={{ fontSize: 16, fontWeight: 500, color: over ? '#a32d2d' : undefined }}>
-                {worked} <span style={{ fontSize: 11, color: '#888' }}>/ {norm}h</span>
+            <div
+              key={emp.id}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                boxShadow: 'var(--shadow)',
+                padding: '8px 10px',
+              }}
+            >
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.name}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: over ? 'var(--danger-text)' : 'var(--text)' }}>
+                {worked} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>/ {norm}h</span>
               </div>
             </div>
           );
@@ -159,7 +200,7 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
       </div>
 
       {issues.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: '#a32d2d' }}>
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--danger-text)' }}>
           {issues.length} problem(y) z zachowaniem 12h przerwy między zmianami.
         </div>
       )}

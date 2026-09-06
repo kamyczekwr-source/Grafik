@@ -113,14 +113,24 @@ export default function App() {
   const balances = computeQuarterBalance(employees, [...priorMonths, schedule]);
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24, fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500 }}>Grafik recepcji</h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setView('grafik')} disabled={view === 'grafik'}>
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px 40px' }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600 }}>Grafik recepcji</h1>
+          <button onClick={() => logout()} style={{ fontSize: 12 }}>
+            Wyloguj
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button
+            className={view === 'grafik' ? 'active' : ''}
+            onClick={() => setView('grafik')}
+            disabled={view === 'grafik'}
+          >
             Grafik
           </button>
           <button
+            className={view === 'pracownicy' ? 'active' : ''}
             onClick={() => {
               setView('pracownicy');
               setSelectedEmployee(null);
@@ -129,7 +139,6 @@ export default function App() {
           >
             Pracownicy
           </button>
-          <button onClick={() => logout()}>Wyloguj</button>
         </div>
       </div>
 
@@ -143,7 +152,7 @@ export default function App() {
         )
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
               {[0, 1, 2].map((i) => {
                 const m = PERIOD_START_MONTH + i;
@@ -154,15 +163,15 @@ export default function App() {
                 );
               })}
             </select>
-            <button onClick={() => setMode('manual')} disabled={mode === 'manual'}>
+            <button className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')} disabled={mode === 'manual'}>
               Ręczny
             </button>
-            <button onClick={() => setMode('auto')} disabled={mode === 'auto'}>
+            <button className={mode === 'auto' ? 'active' : ''} onClick={() => setMode('auto')} disabled={mode === 'auto'}>
               Auto
             </button>
-            <span style={{ borderLeft: '1px solid #ddd', height: 20 }} />
+            <span style={{ borderLeft: '1px solid var(--border-strong)', height: 20 }} />
             <button onClick={handleUndo} disabled={history.length === 0}>
-              Cofnij
+              ↺ Cofnij
             </button>
             <button onClick={handleClear} disabled={schedule.entries.length === 0}>
               Wyczyść grafik
@@ -172,9 +181,11 @@ export default function App() {
           <AiGeneratePanel employees={employees} schedule={schedule} onGenerated={applyEntries} />
 
           {mode === 'auto' && (
-            <div style={{ marginBottom: 16 }}>
-              <button onClick={handleAutoGenerate}>Wygeneruj grafik automatycznie (algorytm)</button>
-              <p style={{ fontSize: 13, color: '#888' }}>
+            <div style={{ marginBottom: 18 }}>
+              <button className="primary" onClick={handleAutoGenerate}>
+                Wygeneruj grafik automatycznie (algorytm)
+              </button>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
                 Algorytm respektuje 12h przerwy, podwójną obsadę i stara się wyrównać godziny względem normy
                 narastająco w okresie rozliczeniowym. Wynik możesz poprawić ręcznie.
               </p>
@@ -183,17 +194,32 @@ export default function App() {
 
           <ScheduleTable employees={employees} schedule={schedule} onChange={handleTableChange} />
 
-          <h2 style={{ fontSize: 15, fontWeight: 500, marginTop: 24 }}>Bilans okresu rozliczeniowego</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${employees.length}, 1fr)`, gap: 8, marginTop: 8 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 28, marginBottom: 10 }}>Bilans okresu rozliczeniowego</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(120px, 1fr))`, gap: 8 }}>
             {balances.map((b) => {
               const emp = employees.find((e) => e.id === b.employeeId)!;
               return (
-                <div key={b.employeeId} style={{ background: '#f4f3ee', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontSize: 11, color: '#888' }}>{emp.name}</div>
-                  <div style={{ fontSize: 15, fontWeight: 500 }}>
-                    {b.workedHours}h / {b.normHours}h
+                <div
+                  key={b.employeeId}
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    boxShadow: 'var(--shadow)',
+                    padding: '10px 12px',
+                  }}
+                >
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.name}</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }}>
+                    {b.workedHours}h <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>/ {b.normHours}h</span>
                   </div>
-                  <div style={{ fontSize: 12, color: b.diff > 0 ? '#a32d2d' : b.diff < 0 ? '#185fa5' : '#888' }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      marginTop: 2,
+                      color: b.diff > 0 ? 'var(--danger-text)' : b.diff < 0 ? 'var(--info-text)' : 'var(--text-muted)',
+                    }}
+                  >
                     {b.diff > 0 ? `+${b.diff}h nadgodzin` : b.diff < 0 ? `${b.diff}h niedoboru` : 'zbilansowano'}
                   </div>
                 </div>
