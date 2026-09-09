@@ -121,3 +121,15 @@ table {
 ::selection {
   background: var(--accent-soft);
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  a[href]::after {
+    content: '';
+  }
+}

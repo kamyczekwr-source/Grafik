@@ -7,9 +7,19 @@ import { EmployeeList } from './components/EmployeeList';
 import { EmployeeScheduleView } from './components/EmployeeScheduleView';
 import { autoGenerateMonth } from './lib/autoGenerate';
 import { computeQuarterBalance } from './lib/rules';
-import { loadEmployees, loadQuarter, saveEmployee, saveSchedule } from './lib/storage';
+import {
+  loadEmployees,
+  loadQuarter,
+  loadSchedule,
+  loadPeriodSettings,
+  savePeriodSettings,
+  saveEmployee,
+  saveSchedule,
+} from './lib/storage';
 import { watchAuth, logout } from './lib/auth';
 import type { User } from 'firebase/auth';
+import { addMonths, ymEqual, ymToIndex, MONTH_NAMES_PL, type YearMonth } from './lib/dates';
+import { scheduleToText, scheduleToMailtoUrl } from './lib/exportText';
 
 const DEFAULT_EMPLOYEES: Employee[] = [
   { id: 'forysiak', name: 'I. Forysiak', etat: 1 },
@@ -19,9 +29,7 @@ const DEFAULT_EMPLOYEES: Employee[] = [
   { id: 'moskwa', name: 'E. Moskwa', etat: 0.75 },
 ];
 
-// Pierwszy miesiąc bieżącego 3-miesięcznego okresu rozliczeniowego (dostosuj do swojego harmonogramu).
-const PERIOD_START_MONTH = 9;
-const YEAR = 2026;
+const DEFAULT_PERIOD_START: YearMonth = { year: 2026, month: 9 };
 const MAX_HISTORY = 20;
 
 function emptySchedule(year: number, month: number): MonthSchedule {
@@ -31,9 +39,11 @@ function emptySchedule(year: number, month: number): MonthSchedule {
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [employees, setEmployees] = useState<Employee[]>(DEFAULT_EMPLOYEES);
-  const [month, setMonth] = useState(PERIOD_START_MONTH);
-  const [schedule, setSchedule] = useState<MonthSchedule>(emptySchedule(YEAR, PERIOD_START_MONTH));
-  const [priorMonths, setPriorMonths] = useState<MonthSchedule[]>([]);
+  const [current, setCurrent] = useState<YearMonth>(DEFAULT_PERIOD_START);
+  const [periodStart, setPeriodStart] = useState<YearMonth>(DEFAULT_PERIOD_START);
+  const [showPeriodSettings, setShowPeriodSettings] = useState(false);
+  const [schedule, setSchedule] = useState<MonthSchedule>(emptySchedule(DEFAULT_PERIOD_START.year, DEFAULT_PERIOD_START.month));
+  const [quarterMonths, setQuarterMonths] = useState<MonthSchedule[]>([]);
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
   const [view, setView] = useState<'grafik' | 'pracownicy'>('grafik');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -42,6 +52,7 @@ export default function App() {
 
   useEffect(() => watchAuth(setUser), []);
 
+  // Wczytaj pracowników i zapisany początek okresu rozliczeniowego raz po zalogowaniu.
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -50,22 +61,41 @@ export default function App() {
         if (emps.length > 0) setEmployees(emps);
         else await Promise.all(DEFAULT_EMPLOYEES.map(saveEmployee));
 
-        const quarter = await loadQuarter(YEAR, PERIOD_START_MONTH);
-        const current = quarter.find((m) => m.month === month) ?? emptySchedule(YEAR, month);
-        setSchedule(current);
-        setPriorMonths(quarter.filter((m) => m.month < month));
-        setHistory([]);
+        const savedPeriod = await loadPeriodSettings();
+        if (savedPeriod) {
+          setPeriodStart(savedPeriod);
+          setCurrent(savedPeriod);
+        }
       } catch (err) {
         console.error('Nie udało się połączyć z Firebase - uzupełnij konfigurację w src/firebase.ts', err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Wczytaj bieżący miesiąc + cały okres rozliczeniowy (do bilansu) za każdym razem, gdy zmienia się wybrany miesiąc lub okres.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const [currentSchedule, quarter] = await Promise.all([
+          loadSchedule(current.year, current.month).then((s) => s ?? emptySchedule(current.year, current.month)),
+          loadQuarter(periodStart.year, periodStart.month),
+        ]);
+        setSchedule(currentSchedule);
+        setQuarterMonths(quarter);
+        setHistory([]);
+      } catch (err) {
+        console.error('Błąd wczytywania grafiku', err);
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, user]);
+  }, [user, current, periodStart]);
 
   if (user === undefined) {
-    return <p style={{ fontFamily: 'sans-serif', padding: 24 }}>Wczytywanie...</p>;
+    return <p style={{ padding: 24 }}>Wczytywanie...</p>;
   }
 
   if (user === null) {
@@ -81,7 +111,6 @@ export default function App() {
     }
   }
 
-  /** Każda zmiana grafiku (auto, AI, wyczyszczenie) przechodzi przez to - zapisuje poprzedni stan do historii cofania. */
   function applyEntries(nextEntries: ShiftEntry[]) {
     setHistory((h) => [...h.slice(-(MAX_HISTORY - 1)), schedule.entries]);
     persist({ ...schedule, entries: nextEntries });
@@ -104,17 +133,53 @@ export default function App() {
     applyEntries([]);
   }
 
+  // Miesiące z okresu rozliczeniowego, ale z podmienionym bieżącym miesiącem na jego świeżą wersję ze stanu (żeby bilans od razu odzwierciedlał edycje).
+  const effectiveQuarter = quarterMonths.map((m) => (ymEqual(m, current) ? schedule : m));
+
+  function priorEntriesFor(target: YearMonth): ShiftEntry[] {
+    return effectiveQuarter
+      .filter((m) => ymToIndex(m) < ymToIndex(target))
+      .flatMap((m) => m.entries);
+  }
+
   function handleAutoGenerate() {
-    const priorEntries = priorMonths.flatMap((m) => m.entries);
-    const entries = autoGenerateMonth(employees, YEAR, month, priorEntries, schedule.specialStaffing);
+    const entries = autoGenerateMonth(employees, current.year, current.month, priorEntriesFor(current), schedule.specialStaffing);
     applyEntries(entries);
   }
 
-  const balances = computeQuarterBalance(employees, [...priorMonths, schedule]);
+  async function handleSavePeriodStart(next: YearMonth) {
+    setPeriodStart(next);
+    try {
+      await savePeriodSettings(next);
+    } catch (err) {
+      console.error('Nie udało się zapisać ustawień okresu rozliczeniowego', err);
+    }
+    setShowPeriodSettings(false);
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
+  async function handleShare() {
+    const text = scheduleToText(employees, schedule);
+    const title = `Grafik recepcji — ${MONTH_NAMES_PL[schedule.month - 1]} ${schedule.year}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text });
+      } catch {
+        // użytkownik anulował - nic nie robimy
+      }
+    } else {
+      window.location.href = scheduleToMailtoUrl(employees, schedule);
+    }
+  }
+
+  const balances = computeQuarterBalance(employees, effectiveQuarter);
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px 40px' }}>
-      <div style={{ marginBottom: 20 }}>
+      <div className="no-print" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <h1 style={{ fontSize: 22, fontWeight: 600 }}>Grafik recepcji</h1>
           <button onClick={() => logout()} style={{ fontSize: 12 }}>
@@ -122,11 +187,7 @@ export default function App() {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button
-            className={view === 'grafik' ? 'active' : ''}
-            onClick={() => setView('grafik')}
-            disabled={view === 'grafik'}
-          >
+          <button className={view === 'grafik' ? 'active' : ''} onClick={() => setView('grafik')} disabled={view === 'grafik'}>
             Grafik
           </button>
           <button
@@ -152,17 +213,61 @@ export default function App() {
         )
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {[0, 1, 2].map((i) => {
-                const m = PERIOD_START_MONTH + i;
-                return (
-                  <option key={m} value={m}>
-                    {m}/{YEAR}
+          <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <button onClick={() => setCurrent(addMonths(current, -1))} title="Poprzedni miesiąc">
+              ‹
+            </button>
+            <span style={{ fontSize: 14, fontWeight: 600, minWidth: 130, textAlign: 'center' }}>
+              {MONTH_NAMES_PL[current.month - 1]} {current.year}
+            </span>
+            <button onClick={() => setCurrent(addMonths(current, 1))} title="Następny miesiąc">
+              ›
+            </button>
+            <button onClick={() => setShowPeriodSettings((s) => !s)} style={{ fontSize: 12 }}>
+              Okres rozliczeniowy: {MONTH_NAMES_PL[periodStart.month - 1]} {periodStart.year} –{' '}
+              {MONTH_NAMES_PL[addMonths(periodStart, 2).month - 1]} {addMonths(periodStart, 2).year} ✎
+            </button>
+          </div>
+
+          {showPeriodSettings && (
+            <div
+              className="no-print"
+              style={{
+                background: 'var(--surface-muted)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: 12,
+                marginBottom: 14,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span style={{ fontSize: 13 }}>Nowy okres zaczyna się od:</span>
+              <select
+                value={periodStart.month}
+                onChange={(e) => setPeriodStart({ ...periodStart, month: Number(e.target.value) })}
+              >
+                {MONTH_NAMES_PL.map((name, i) => (
+                  <option key={i} value={i + 1}>
+                    {name}
                   </option>
-                );
-              })}
-            </select>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={periodStart.year}
+                onChange={(e) => setPeriodStart({ ...periodStart, year: Number(e.target.value) })}
+                style={{ width: 80 }}
+              />
+              <button className="primary" onClick={() => handleSavePeriodStart(periodStart)}>
+                Zapisz
+              </button>
+            </div>
+          )}
+
+          <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             <button className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')} disabled={mode === 'manual'}>
               Ręczny
             </button>
@@ -176,21 +281,29 @@ export default function App() {
             <button onClick={handleClear} disabled={schedule.entries.length === 0}>
               Wyczyść grafik
             </button>
+            <span style={{ borderLeft: '1px solid var(--border-strong)', height: 20 }} />
+            <button onClick={handlePrint}>🖨 Drukuj</button>
+            <button onClick={handleShare}>↗ Udostępnij</button>
+            <a href={scheduleToMailtoUrl(employees, schedule)} style={{ textDecoration: 'none' }}>
+              <button type="button">✉ Wyślij mailem</button>
+            </a>
           </div>
 
-          <AiGeneratePanel employees={employees} schedule={schedule} onGenerated={applyEntries} />
+          <div className="no-print">
+            <AiGeneratePanel employees={employees} schedule={schedule} onGenerated={applyEntries} />
 
-          {mode === 'auto' && (
-            <div style={{ marginBottom: 18 }}>
-              <button className="primary" onClick={handleAutoGenerate}>
-                Wygeneruj grafik automatycznie (algorytm)
-              </button>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-                Algorytm respektuje 12h przerwy, podwójną obsadę i stara się wyrównać godziny względem normy
-                narastająco w okresie rozliczeniowym. Wynik możesz poprawić ręcznie.
-              </p>
-            </div>
-          )}
+            {mode === 'auto' && (
+              <div style={{ marginBottom: 18 }}>
+                <button className="primary" onClick={handleAutoGenerate}>
+                  Wygeneruj grafik automatycznie (algorytm)
+                </button>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
+                  Algorytm respektuje 12h przerwy, podwójną obsadę i stara się wyrównać godziny względem normy
+                  narastająco w okresie rozliczeniowym. Wynik możesz poprawić ręcznie.
+                </p>
+              </div>
+            )}
+          </div>
 
           <ScheduleTable employees={employees} schedule={schedule} onChange={handleTableChange} />
 

@@ -13,6 +13,9 @@ Aplikacja do układania grafiku pracy recepcji (3-miesięczny okres rozliczeniow
 - **Generowanie przez AI (Gemini)** — opisujesz słownie, jak ma wyglądać grafik (np. czyjeś preferencje, dni wolne), a Gemini generuje cały miesiąc respektując reguły
 - **Cofnij / Wyczyść grafik** — cofa ostatnią zmianę (do 20 kroków wstecz) albo czyści cały bieżący miesiąc
 - **Widok pracownika** — zakładka "Pracownicy" pokazuje listę, klik w osobę pokazuje jej indywidualny grafik na dany miesiąc
+- **Dowolna nawigacja miesięcy** — strzałki ‹ › pozwalają przejść do dowolnego miesiąca (wstecz też), niezależnie od okresu rozliczeniowego
+- **Konfigurowalny okres rozliczeniowy** — przycisk "Okres rozliczeniowy ✎" pozwala ustawić, od którego miesiąca zaczyna się bieżący 3-miesięczny okres (bilans liczy się od tego miesiąca)
+- **Drukuj / Wyślij mailem / Udostępnij** — drukowanie przez przeglądarkę (ukrywa przyciski, zostawia tylko grafik), mailto: z tekstowym podsumowaniem grafiku, oraz natywne "Udostępnij" na telefonie (Web Share API)
 
 ## Klucz Gemini API (opcjonalnie, do generowania AI)
 
