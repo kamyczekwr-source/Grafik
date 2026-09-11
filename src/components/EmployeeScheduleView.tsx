@@ -1,19 +1,21 @@
 import { useMemo } from 'react';
 import type { Employee, MonthSchedule } from '../types';
-import { daysInMonth, workedHoursForEmployee, monthlyNormHours } from '../lib/rules';
+import { daysInMonth, workedHoursForEmployee, effectiveMonthlyNorm } from '../lib/rules';
+import type { NormSettings } from '../lib/storage';
 import { getPolishHolidays, isFreeDay } from '../lib/holidays';
 
 interface Props {
   employee: Employee;
   schedule: MonthSchedule;
   onBack: () => void;
+  normSettings?: NormSettings;
 }
 
-export function EmployeeScheduleView({ employee, schedule, onBack }: Props) {
+export function EmployeeScheduleView({ employee, schedule, onBack, normSettings }: Props) {
   const holidays = useMemo(() => getPolishHolidays(schedule.year), [schedule.year]);
   const days = daysInMonth(schedule.year, schedule.month);
   const worked = workedHoursForEmployee(schedule.entries, employee.id);
-  const norm = monthlyNormHours(schedule.year, schedule.month, employee.etat);
+  const norm = effectiveMonthlyNorm(schedule.year, schedule.month, employee.etat, normSettings);
 
   return (
     <div>

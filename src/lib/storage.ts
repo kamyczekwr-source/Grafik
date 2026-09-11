@@ -6,10 +6,17 @@ const EMPLOYEES_COLLECTION = 'employees';
 const SCHEDULES_COLLECTION = 'schedules';
 const SETTINGS_COLLECTION = 'settings';
 const PERIOD_DOC = 'period';
+const NORMS_DOC = 'norms';
 
 export interface PeriodSettings {
   year: number;
   month: number; // pierwszy miesiąc bieżącego 3-miesięcznego okresu rozliczeniowego
+}
+
+export interface NormSettings {
+  mode: 'auto' | 'manual';
+  /** Ręcznie wpisane godziny dla pełnego etatu, klucz "YYYY-MM". */
+  manualHours: Record<string, number>;
 }
 
 export async function loadPeriodSettings(): Promise<PeriodSettings | null> {
@@ -20,6 +27,16 @@ export async function loadPeriodSettings(): Promise<PeriodSettings | null> {
 
 export async function savePeriodSettings(settings: PeriodSettings): Promise<void> {
   await setDoc(doc(db, SETTINGS_COLLECTION, PERIOD_DOC), settings);
+}
+
+export async function loadNormSettings(): Promise<NormSettings> {
+  const snap = await getDoc(doc(db, SETTINGS_COLLECTION, NORMS_DOC));
+  if (!snap.exists()) return { mode: 'auto', manualHours: {} };
+  return snap.data() as NormSettings;
+}
+
+export async function saveNormSettings(settings: NormSettings): Promise<void> {
+  await setDoc(doc(db, SETTINGS_COLLECTION, NORMS_DOC), settings);
 }
 
 function scheduleId(year: number, month: number) {

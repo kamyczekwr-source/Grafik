@@ -16,6 +16,8 @@ Aplikacja do układania grafiku pracy recepcji (3-miesięczny okres rozliczeniow
 - **Dowolna nawigacja miesięcy** — strzałki ‹ › pozwalają przejść do dowolnego miesiąca (wstecz też), niezależnie od okresu rozliczeniowego
 - **Konfigurowalny okres rozliczeniowy** — przycisk "Okres rozliczeniowy ✎" pozwala ustawić, od którego miesiąca zaczyna się bieżący 3-miesięczny okres (bilans liczy się od tego miesiąca)
 - **Drukuj / Wyślij mailem / Udostępnij** — drukowanie przez przeglądarkę (ukrywa przyciski, zostawia tylko grafik), mailto: z tekstowym podsumowaniem grafiku, oraz natywne "Udostępnij" na telefonie (Web Share API)
+- **Wczytaj ze zdjęcia** — zrób zdjęcie papierowego grafiku (np. telefonem), AI (Gemini, multimodalnie) odczytuje tabelę i wstawia zmiany do wybranego miesiąca; wymaga tego samego klucza Gemini co generowanie AI
+- **Norma godzin** — przycisk "Norma godzin ✎" pozwala wybrać: automatyczne wyliczanie (dni robocze × 8h) albo ręczne wpisanie liczby godzin dla każdego miesiąca (np. z oficjalnej tabeli wymiaru czasu pracy) — używane wszędzie tam, gdzie liczony jest bilans
 
 ## Klucz Gemini API (opcjonalnie, do generowania AI)
 

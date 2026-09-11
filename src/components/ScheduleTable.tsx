@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import type { Employee, MonthSchedule, ShiftCode, ShiftEntry, ValidationIssue } from '../types';
-import { daysInMonth, validateRestPeriods, workedHoursForEmployee, monthlyNormHours } from '../lib/rules';
+import { daysInMonth, validateRestPeriods, workedHoursForEmployee, effectiveMonthlyNorm } from '../lib/rules';
+import type { NormSettings } from '../lib/storage';
 import { getPolishHolidays, isFreeDay } from '../lib/holidays';
 
 const SHIFT_OPTIONS: ShiftCode[] = ['6-14', '14-22', '22-6', 'W'];
@@ -10,9 +11,10 @@ interface Props {
   schedule: MonthSchedule;
   onChange: (schedule: MonthSchedule) => void;
   readOnly?: boolean;
+  normSettings?: NormSettings;
 }
 
-export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props) {
+export function ScheduleTable({ employees, schedule, onChange, readOnly, normSettings }: Props) {
   const [editing, setEditing] = useState<{ date: string; employeeId: string; slot: 0 | 1 } | null>(null);
   const holidays = useMemo(() => getPolishHolidays(schedule.year), [schedule.year]);
   const days = daysInMonth(schedule.year, schedule.month);
@@ -177,7 +179,7 @@ export function ScheduleTable({ employees, schedule, onChange, readOnly }: Props
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(110px, 1fr))`, gap: 8, marginTop: 14 }}>
         {employees.map((emp) => {
           const worked = workedHoursForEmployee(schedule.entries, emp.id);
-          const norm = monthlyNormHours(schedule.year, schedule.month, emp.etat);
+          const norm = effectiveMonthlyNorm(schedule.year, schedule.month, emp.etat, normSettings);
           const over = worked > norm;
           return (
             <div

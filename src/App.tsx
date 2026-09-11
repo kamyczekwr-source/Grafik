@@ -3,8 +3,10 @@ import type { Employee, MonthSchedule, ShiftEntry } from './types';
 import { ScheduleTable } from './components/ScheduleTable';
 import { LoginScreen } from './components/LoginScreen';
 import { AiGeneratePanel } from './components/AiGeneratePanel';
+import { PhotoImportPanel } from './components/PhotoImportPanel';
 import { EmployeeList } from './components/EmployeeList';
 import { EmployeeScheduleView } from './components/EmployeeScheduleView';
+import { NormSettingsPanel } from './components/NormSettingsPanel';
 import { autoGenerateMonth } from './lib/autoGenerate';
 import { computeQuarterBalance } from './lib/rules';
 import {
@@ -13,8 +15,11 @@ import {
   loadSchedule,
   loadPeriodSettings,
   savePeriodSettings,
+  loadNormSettings,
+  saveNormSettings,
   saveEmployee,
   saveSchedule,
+  type NormSettings,
 } from './lib/storage';
 import { watchAuth, logout } from './lib/auth';
 import type { User } from 'firebase/auth';
@@ -42,6 +47,8 @@ export default function App() {
   const [current, setCurrent] = useState<YearMonth>(DEFAULT_PERIOD_START);
   const [periodStart, setPeriodStart] = useState<YearMonth>(DEFAULT_PERIOD_START);
   const [showPeriodSettings, setShowPeriodSettings] = useState(false);
+  const [normSettings, setNormSettings] = useState<NormSettings>({ mode: 'auto', manualHours: {} });
+  const [showNormSettings, setShowNormSettings] = useState(false);
   const [schedule, setSchedule] = useState<MonthSchedule>(emptySchedule(DEFAULT_PERIOD_START.year, DEFAULT_PERIOD_START.month));
   const [quarterMonths, setQuarterMonths] = useState<MonthSchedule[]>([]);
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
@@ -66,6 +73,9 @@ export default function App() {
           setPeriodStart(savedPeriod);
           setCurrent(savedPeriod);
         }
+
+        const savedNorms = await loadNormSettings();
+        setNormSettings(savedNorms);
       } catch (err) {
         console.error('Nie udało się połączyć z Firebase - uzupełnij konfigurację w src/firebase.ts', err);
       }
@@ -157,6 +167,16 @@ export default function App() {
     setShowPeriodSettings(false);
   }
 
+  async function handleSaveNormSettings(next: NormSettings) {
+    setNormSettings(next);
+    try {
+      await saveNormSettings(next);
+    } catch (err) {
+      console.error('Nie udało się zapisać ustawień normy godzin', err);
+    }
+    setShowNormSettings(false);
+  }
+
   function handlePrint() {
     window.print();
   }
@@ -175,7 +195,7 @@ export default function App() {
     }
   }
 
-  const balances = computeQuarterBalance(employees, effectiveQuarter);
+  const balances = computeQuarterBalance(employees, effectiveQuarter, normSettings);
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 16px 40px' }}>
@@ -207,7 +227,12 @@ export default function App() {
         <p>Wczytywanie...</p>
       ) : view === 'pracownicy' ? (
         selectedEmployee ? (
-          <EmployeeScheduleView employee={selectedEmployee} schedule={schedule} onBack={() => setSelectedEmployee(null)} />
+          <EmployeeScheduleView
+            employee={selectedEmployee}
+            schedule={schedule}
+            onBack={() => setSelectedEmployee(null)}
+            normSettings={normSettings}
+          />
         ) : (
           <EmployeeList employees={employees} onSelect={setSelectedEmployee} />
         )
@@ -227,7 +252,19 @@ export default function App() {
               Okres rozliczeniowy: {MONTH_NAMES_PL[periodStart.month - 1]} {periodStart.year} –{' '}
               {MONTH_NAMES_PL[addMonths(periodStart, 2).month - 1]} {addMonths(periodStart, 2).year} ✎
             </button>
+            <button onClick={() => setShowNormSettings((s) => !s)} style={{ fontSize: 12 }}>
+              Norma godzin: {normSettings.mode === 'auto' ? 'automatyczna' : 'ręczna'} ✎
+            </button>
           </div>
+
+          {showNormSettings && (
+            <NormSettingsPanel
+              year={current.year}
+              settings={normSettings}
+              onSave={handleSaveNormSettings}
+              onClose={() => setShowNormSettings(false)}
+            />
+          )}
 
           {showPeriodSettings && (
             <div
@@ -290,6 +327,7 @@ export default function App() {
           </div>
 
           <div className="no-print">
+            <PhotoImportPanel employees={employees} schedule={schedule} onImported={applyEntries} />
             <AiGeneratePanel employees={employees} schedule={schedule} onGenerated={applyEntries} />
 
             {mode === 'auto' && (
@@ -305,7 +343,7 @@ export default function App() {
             )}
           </div>
 
-          <ScheduleTable employees={employees} schedule={schedule} onChange={handleTableChange} />
+          <ScheduleTable employees={employees} schedule={schedule} onChange={handleTableChange} normSettings={normSettings} />
 
           <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 28, marginBottom: 10 }}>Bilans okresu rozliczeniowego</h2>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(120px, 1fr))`, gap: 8 }}>

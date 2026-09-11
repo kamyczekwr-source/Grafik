@@ -1,4 +1,5 @@
 import type { Employee, MonthSchedule, ShiftCode, ShiftEntry, ValidationIssue, HourBalance } from '../types';
+import type { NormSettings } from './storage';
 import { isFreeDay, getPolishHolidays } from './holidays';
 
 export const SHIFT_HOURS = 8;
@@ -35,6 +36,21 @@ export function monthlyNormHours(year: number, month: number, etat: number): num
     if (!isFreeDay(dateStr, holidays)) workingDays++;
   }
   return workingDays * SHIFT_HOURS * etat;
+}
+
+/** Norma godzin dla danego miesiąca i etatu, z uwzględnieniem ewentualnego ręcznego
+ *  ustawienia (np. z oficjalnej tabeli wymiaru czasu pracy). Gdy tryb "manual" i podano
+ *  wartość dla danego miesiąca, używa jej (przeliczonej przez etat); w przeciwnym razie
+ *  wraca do automatycznego wyliczenia z dni roboczych. */
+export function effectiveMonthlyNorm(year: number, month: number, etat: number, normSettings?: NormSettings): number {
+  if (normSettings?.mode === 'manual') {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    const manual = normSettings.manualHours[key];
+    if (typeof manual === 'number' && !Number.isNaN(manual)) {
+      return manual * etat;
+    }
+  }
+  return monthlyNormHours(year, month, etat);
 }
 
 /** Waliduje min. 12h przerwy między kolejnymi zmianami tej samej osoby. */
@@ -75,12 +91,13 @@ export function workedHoursForEmployee(entries: ShiftEntry[], employeeId: string
 export function computeQuarterBalance(
   employees: Employee[],
   monthsInPeriod: MonthSchedule[],
+  normSettings?: NormSettings,
 ): HourBalance[] {
   return employees.map((emp) => {
     let normHours = 0;
     let workedHours = 0;
     for (const m of monthsInPeriod) {
-      normHours += monthlyNormHours(m.year, m.month, emp.etat);
+      normHours += effectiveMonthlyNorm(m.year, m.month, emp.etat, normSettings);
       workedHours += workedHoursForEmployee(m.entries, emp.id);
     }
     return { employeeId: emp.id, normHours, workedHours, diff: workedHours - normHours };
