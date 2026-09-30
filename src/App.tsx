@@ -195,6 +195,23 @@ export default function App() {
     }
   }
 
+  async function handleAddEmployee(name: string, etat: number) {
+    const base =
+      name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ł/g, 'l')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'pracownik';
+    let id = base;
+    let n = 2;
+    while (employees.some((e) => e.id === id)) id = `${base}-${n++}`;
+    const emp: Employee = { id, name, etat };
+    await saveEmployee(emp);
+    setEmployees((prev) => [...prev, emp]);
+  }
+
   const balances = computeQuarterBalance(employees, effectiveQuarter, normSettings);
 
   return (
@@ -234,7 +251,7 @@ export default function App() {
             normSettings={normSettings}
           />
         ) : (
-          <EmployeeList employees={employees} onSelect={setSelectedEmployee} />
+          <EmployeeList employees={employees} onSelect={setSelectedEmployee} onAdd={handleAddEmployee} />
         )
       ) : (
         <>
