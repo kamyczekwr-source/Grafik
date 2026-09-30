@@ -3,6 +3,7 @@ import type { Employee, ShiftCode, ShiftEntry } from '../types';
 import { daysInMonth } from './rules';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const MODEL_NAME = 'gemini-3.5-flash';
 const VALID_CODES: ShiftCode[] = ['6-14', '14-22', '22-6', 'W'];
 
 export interface PhotoImportResult {
@@ -10,16 +11,32 @@ export interface PhotoImportResult {
   note?: string;
 }
 
-function fileToBase64(file: File): Promise<string> {
+function readAsBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]); // odetnij prefiks "data:...;base64,"
-    };
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
     reader.onerror = () => reject(new Error('Nie udało się odczytać pliku zdjęcia.'));
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
+}
+
+// Zmniejsza duże zdjęcia z telefonu (max 2000 px, JPEG) - mniejsze żądanie, mniej błędów.
+// Jeśli przeglądarka nie potrafi zdekodować pliku (np. HEIC), wysyła oryginał.
+async function prepareImage(file: File): Promise<{ data: string; mimeType: string }> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob: Blob = await new Promise((res, rej) =>
+      canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob'))), 'image/jpeg', 0.85),
+    );
+    return { data: await readAsBase64(blob), mimeType: 'image/jpeg' };
+  } catch {
+    return { data: await readAsBase64(file), mimeType: file.type || 'image/jpeg' };
+  }
 }
 
 /**
@@ -39,9 +56,12 @@ export async function importScheduleFromPhoto(
     );
   }
 
-  const base64 = await fileToBase64(file);
+  const image = await prepareImage(file);
   const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16384 },
+  });
 
   const days = daysInMonth(year, month);
   const employeeList = employees.map((e) => `- id: "${e.id}", imię i nazwisko na grafiku: "${e.name}"`).join('\n');
@@ -59,7 +79,7 @@ Odczytaj CAŁĄ tabelę ze zdjęcia, dzień po dniu, dla każdej osoby. Zwróć 
 Nie dodawaj wpisów dla dni wolnych ("W" lub puste pole). Jeśli jakaś komórka jest nieczytelna, pomiń ją i wspomnij o tym w "note".`;
 
   const result = await model.generateContent([
-    { inlineData: { data: base64, mimeType: file.type || 'image/jpeg' } },
+    { inlineData: { data: image.data, mimeType: image.mimeType } },
     { text: prompt },
   ]);
 
