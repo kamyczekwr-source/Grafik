@@ -6,6 +6,7 @@ import { daysInMonth } from './rules';
 // VITE_GEMINI_API_KEY (plik .env w katalogu głównym projektu, patrz README).
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
+const MODEL_NAME = 'gemini-3.5-flash';
 const VALID_CODES: ShiftCode[] = ['6-14', '14-22', '22-6', 'W'];
 
 export interface AiGenerateResult {
@@ -32,7 +33,10 @@ export async function generateScheduleWithAi(
   }
 
   const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16384 },
+  });
 
   const days = daysInMonth(year, month);
   const employeeList = employees.map((e) => `- id: "${e.id}", imię: "${e.name}", etat: ${e.etat}`).join('\n');
