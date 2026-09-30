@@ -1,12 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Employee, ShiftCode, ShiftEntry, MonthSchedule } from '../types';
 import { daysInMonth } from './rules';
+import { generateJsonText } from './gemini';
 
 // Wklej swój klucz Gemini API (aistudio.google.com/app/apikey) do zmiennej środowiskowej
 // VITE_GEMINI_API_KEY (plik .env w katalogu głównym projektu, patrz README).
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
-const MODEL_NAME = 'gemini-3.5-flash';
 const VALID_CODES: ShiftCode[] = ['6-14', '14-22', '22-6', 'W'];
 
 export interface AiGenerateResult {
@@ -31,12 +30,6 @@ export async function generateScheduleWithAi(
       'Brak klucza Gemini API. Ustaw VITE_GEMINI_API_KEY w pliku .env (patrz README) i przebuduj/wdróż aplikację ponownie.',
     );
   }
-
-  const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16384 },
-  });
 
   const days = daysInMonth(year, month);
   const employeeList = employees.map((e) => `- id: "${e.id}", imię: "${e.name}", etat: ${e.etat}`).join('\n');
@@ -71,8 +64,7 @@ Zwróć WYŁĄCZNIE poprawny JSON (bez markdown, bez komentarzy, bez dodatkowego
 
 Uwzględnij wpisy tylko dla dni, w których dana osoba pracuje (nie dodawaj wpisów dla "W").`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = (await generateJsonText(API_KEY, [prompt])).trim();
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
 
   let parsed: { entries: Array<{ date: string; employeeId: string; code: string; slotIndex?: number }>; note?: string };
