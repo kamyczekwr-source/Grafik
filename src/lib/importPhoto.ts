@@ -1,9 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Employee, ShiftCode, ShiftEntry } from '../types';
 import { daysInMonth } from './rules';
+import { generateJsonText } from './gemini';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-const MODEL_NAME = 'gemini-3.5-flash';
 const VALID_CODES: ShiftCode[] = ['6-14', '14-22', '22-6', 'W'];
 
 export interface PhotoImportResult {
@@ -57,12 +56,6 @@ export async function importScheduleFromPhoto(
   }
 
   const image = await prepareImage(file);
-  const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16384 },
-  });
-
   const days = daysInMonth(year, month);
   const employeeList = employees.map((e) => `- id: "${e.id}", imię i nazwisko na grafiku: "${e.name}"`).join('\n');
 
@@ -78,12 +71,9 @@ Odczytaj CAŁĄ tabelę ze zdjęcia, dzień po dniu, dla każdej osoby. Zwróć 
 
 Nie dodawaj wpisów dla dni wolnych ("W" lub puste pole). Jeśli jakaś komórka jest nieczytelna, pomiń ją i wspomnij o tym w "note".`;
 
-  const result = await model.generateContent([
-    { inlineData: { data: image.data, mimeType: image.mimeType } },
-    { text: prompt },
-  ]);
-
-  const text = result.response.text().trim();
+  const text = (
+    await generateJsonText(API_KEY, [{ inlineData: { data: image.data, mimeType: image.mimeType } }, { text: prompt }])
+  ).trim();
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
 
   let parsed: { entries: Array<{ date: string; employeeId: string; code: string; slotIndex?: number }>; note?: string };
